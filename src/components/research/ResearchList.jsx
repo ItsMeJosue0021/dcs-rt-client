@@ -3,6 +3,7 @@ import { API_URL } from "../../config/constants";
 import { ResearchRow } from "./ResarchRow";
 import { AbstractModal } from "./AbstractModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { PdfViewerModal } from "./PdfViewerModal";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -10,11 +11,14 @@ export default function ResearchList({
   researchLogs,
   onResearchAdded,
   onEdit,
+  onNotify,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAbstract, setSelectedAbstract] = useState(null);
+  const [selectedManuscript, setSelectedManuscript] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -39,43 +43,70 @@ export default function ResearchList({
     indexOfLastItem,
   );
 
-  const confirmDelete = () => {
-    fetch(`${API_URL}/api/research/${deleteId}`, { method: "DELETE" })
-      .then((res) => res.json())
-      .then(() => {
-        if (onResearchAdded) onResearchAdded();
-        setDeleteId(null);
+  const confirmDelete = async () => {
+    if (!deleteId || isDeleting) return;
 
-        if (currentPageItems.length === 1 && currentPage > 1) {
-          setCurrentPage((prev) => prev - 1);
-        }
-      })
-      .catch((err) => console.error(err));
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/research/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Unable to delete the research record.");
+
+      await res.json();
+      if (onResearchAdded) onResearchAdded();
+      setDeleteId(null);
+      onNotify?.({
+        type: "success",
+        title: "Record deleted",
+        message: "The research entry was removed successfully.",
+      });
+
+      if (currentPageItems.length === 1 && currentPage > 1) {
+        setCurrentPage((prev) => prev - 1);
+      }
+    } catch (err) {
+      console.error(err);
+      onNotify?.({
+        type: "error",
+        title: "Delete failed",
+        message: "The record could not be deleted. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
-    <div className="w-full bg-white rounded-xl shadow p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="w-full rounded-lg border border-slate-200 bg-white p-6">
+      <div className="mb-5 flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">
             Research Repository
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="mt-1 text-sm text-slate-500">
             Showing {totalItems === 0 ? 0 : indexOfFirstItem + 1} to{" "}
             {Math.min(indexOfLastItem, totalItems)} of {totalItems} entries
           </p>
         </div>
-        <input
-          className="border rounded-lg px-3 py-2 text-sm w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          placeholder="Search items..."
-          value={searchQuery}
-          onChange={handleSearchChange}
-        />
+
+        <label className="w-full flex items-center gap-4 sm:w-96">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Search
+          </span>
+          <input
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800  transition placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
+            placeholder="Title, author, or adviser"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+        </label>
       </div>
 
-      <div className="overflow-x-auto border rounded-lg">
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold border-b">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-[0.08em] text-slate-600">
             <tr>
               <th className="px-4 py-3 text-left">Title</th>
               <th className="px-4 py-3 text-left">Abstract</th>
@@ -85,7 +116,7 @@ export default function ResearchList({
               <th className="px-4 py-3 text-left">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-slate-100 bg-white">
             {currentPageItems.length > 0 ? (
               currentPageItems.map((item) => (
                 <ResearchRow
@@ -94,12 +125,28 @@ export default function ResearchList({
                   onEdit={onEdit}
                   onDelete={setDeleteId}
                   onViewAbstract={setSelectedAbstract}
+                  onViewManuscript={(selectedItem) =>
+                    setSelectedManuscript({
+                      title: selectedItem.title,
+                      url: `${API_URL}${selectedItem.pdf_url}`,
+                    })
+                  }
                 />
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center py-8 text-gray-400">
-                  No matching records found.
+                <td colSpan="6" className="px-4 py-12 text-center">
+                  <div className="mx-auto flex max-w-sm flex-col items-center">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500">
+                      0
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700">
+                      No research records found
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Try a different search term or add a new research entry.
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -108,8 +155,8 @@ export default function ResearchList({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-between items-center mt-4 pt-4 border-t text-sm">
-          <span className="text-gray-600">
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm">
+          <span className="text-slate-600">
             Page {currentPage} of {totalPages}
           </span>
 
@@ -117,7 +164,7 @@ export default function ResearchList({
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed font-medium transition"
+              className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
             >
               Previous
             </button>
@@ -129,10 +176,10 @@ export default function ResearchList({
                   <button
                     key={pageNumber}
                     onClick={() => setCurrentPage(pageNumber)}
-                    className={`w-8 h-8 rounded-lg border text-sm font-medium transition ${
+                    className={`h-8 w-8 cursor-pointer rounded-md border text-sm font-medium transition ${
                       currentPage === pageNumber
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "text-gray-700 hover:bg-gray-50"
+                        ? "bg-emerald-700 text-white border-emerald-700"
+                        : "border-slate-300 text-slate-700 hover:bg-slate-50"
                     }`}
                   >
                     {pageNumber}
@@ -144,7 +191,7 @@ export default function ResearchList({
             <button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 border rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed font-medium transition"
+              className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
             >
               Next
             </button>
@@ -154,14 +201,22 @@ export default function ResearchList({
 
       <DeleteConfirmModal
         isOpen={Boolean(deleteId)}
-        onClose={() => setDeleteId(null)}
+        onClose={() => {
+          if (!isDeleting) setDeleteId(null);
+        }}
         onConfirm={confirmDelete}
+        isDeleting={isDeleting}
       />
 
       <AbstractModal
         isOpen={Boolean(selectedAbstract)}
         abstract={selectedAbstract}
         onClose={() => setSelectedAbstract(null)}
+      />
+
+      <PdfViewerModal
+        file={selectedManuscript}
+        onClose={() => setSelectedManuscript(null)}
       />
     </div>
   );
