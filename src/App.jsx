@@ -69,7 +69,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <header className="border-b border-emerald-100 bg-white">
-        <div className="max-w-7xl mx-auto flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-7xl mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
@@ -87,40 +87,40 @@ export default function App() {
           </div>
 
           <div className="text-left sm:text-right">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 sm:text-xs sm:tracking-[0.16em]">
               Department of Computer Studies
             </p>
-            <p className="text-sm font-medium text-slate-600">
+            <p className="text-xs font-medium text-slate-600 sm:text-sm">
               Research Repository System
             </p>
           </div>
         </div>
       </header>
 
-      <main className="p-6 pb-24 lg:p-10 lg:pb-24">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-950 tracking-tight">
-            DCS Research Repository
-          </h1>
-          <p className="text-sm text-emerald-700 font-medium mt-1">
-            Centralized archive for DCS student research projects
-          </p>
-        </div>
+      <main className="p-4 pb-28 sm:p-6 sm:pb-24 lg:p-10 lg:pb-24">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-950 tracking-tight sm:text-3xl">
+              DCS Research Repository
+            </h1>
+            <p className="text-sm text-emerald-700 font-medium mt-1">
+              Centralized archive for DCS student research projects
+            </p>
+          </div>
 
-        <button
-          onClick={() => {
-            setIsEdit(false);
-            setSelectedResearch(null);
-            setIsModalOpen(true);
-          }}
-          className="cursor-pointer inline-flex items-center gap-2.5 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-800 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-700/25 focus:ring-offset-2"
-        >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-base leading-none">
-            +
-          </span>
-          Add Research Entry
-        </button>
+          <button
+            onClick={() => {
+              setIsEdit(false);
+              setSelectedResearch(null);
+              setIsModalOpen(true);
+            }}
+            className="cursor-pointer inline-flex w-full items-center justify-center gap-2.5 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-900/10 transition hover:bg-emerald-800 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-700/25 focus:ring-offset-2 sm:w-auto"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/15 text-base leading-none">
+              +
+            </span>
+            Add Research Entry
+          </button>
         </div>
 
         <div className="max-w-7xl mx-auto">
@@ -146,7 +146,7 @@ export default function App() {
       <FeedbackPopup feedback={feedback} onClose={() => setFeedback(null)} />
 
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-emerald-100 bg-white/95 backdrop-blur">
-        <div className="max-w-7xl mx-auto flex flex-col gap-1 px-6 py-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left lg:px-10">
+        <div className="max-w-7xl mx-auto flex flex-col gap-1 px-4 py-3 text-center sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left lg:px-10">
           <p className="text-xs font-medium text-slate-600">
             DCS Research Repository System
           </p>

@@ -131,14 +131,14 @@ export function PdfViewerModal({ file, onClose }) {
       maxWidth={isFullscreen ? "max-w-none" : "max-w-6xl"}
       panelClassName={
         isFullscreen
-          ? "h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)]"
+          ? "h-[calc(100vh-1.5rem)] max-h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-2rem)]"
           : ""
       }
       headerActions={
         <button
           type="button"
           onClick={() => setIsFullscreen((current) => !current)}
-          className="cursor-pointer rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          className="cursor-pointer rounded border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3 sm:text-sm"
         >
           {isFullscreen ? "Minimize" : "Maximize"}
         </button>
@@ -154,8 +154,8 @@ export function PdfViewerModal({ file, onClose }) {
         </div>
 
         <div
-          className={`relative overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-4 ${
-            isFullscreen ? "max-h-[calc(100vh-12rem)]" : "max-h-[68vh]"
+          className={`relative overflow-auto rounded-lg border border-slate-200 bg-slate-100 p-2 sm:p-4 ${
+            isFullscreen ? "max-h-[calc(100vh-11rem)] sm:max-h-[calc(100vh-12rem)]" : "max-h-[68vh]"
           }`}
         >
           {isLoading && (

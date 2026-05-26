@@ -26,7 +26,7 @@ export function FeedbackPopup({ feedback, onClose }) {
   const variant = styles[feedback.type] || styles.success;
 
   return (
-    <div className="fixed right-4 top-4 z-[60] w-[calc(100%-2rem)] max-w-sm">
+    <div className="fixed right-3 top-3 z-[60] w-[calc(100%-1.5rem)] max-w-sm sm:right-4 sm:top-4 sm:w-[calc(100%-2rem)]">
       <div
         className={`flex items-start gap-3 rounded-xl border ${variant.borderClass} bg-white p-4 shadow-lg`}
         role="status"

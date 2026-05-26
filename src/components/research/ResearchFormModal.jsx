@@ -103,7 +103,7 @@ export default function ResearchFormModal({
       maxWidth="max-w-5xl"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           <Field label="Title" required>
             <Input name="title" value={formData.title} onChange={handleChange} placeholder="Enter research title" disabled={isSaving} required />
           </Field>
@@ -112,7 +112,7 @@ export default function ResearchFormModal({
             <Input name="authors" value={formData.authors} onChange={handleChange} placeholder="Enter author names" disabled={isSaving} required />
           </Field>
 
-          <Field label="Abstract" required className="lg:col-span-2">
+          <Field label="Abstract" required className="md:col-span-2">
             <TextArea name="abstract" value={formData.abstract} onChange={handleChange} placeholder="Enter research abstract" rows="3" disabled={isSaving} required />
           </Field>
 
@@ -132,24 +132,24 @@ export default function ResearchFormModal({
             <Input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files[0])} disabled={isSaving} />
           </Field>
 
-          <Field label="Website URL" className="lg:col-span-2">
+          <Field label="Website URL" className="md:col-span-2">
             <Input name="website_url" value={formData.website_url} onChange={handleChange} placeholder="https://example.com" disabled={isSaving} />
           </Field>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-emerald-100">
+        <div className="flex flex-col-reverse gap-2 border-t border-emerald-100 pt-4 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={resetAndClose}
             disabled={isSaving}
-            className="cursor-pointer px-4 py-2 border border-emerald-200 rounded hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer rounded border border-emerald-200 px-4 py-2 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSaving}
-            className="cursor-pointer px-4 py-2 bg-emerald-700 text-white rounded hover:bg-emerald-800 transition disabled:cursor-not-allowed disabled:opacity-70"
+            className="cursor-pointer rounded bg-emerald-700 px-4 py-2 text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSaving ? "Saving..." : isEdit ? "Update" : "Save"}
           </button>

@@ -79,10 +79,10 @@ export default function ResearchList({
   };
 
   return (
-    <div className="w-full rounded-lg border border-slate-200 bg-white p-6">
-      <div className="mb-5 flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="w-full rounded-lg border border-slate-200 bg-white p-4 sm:p-6">
+      <div className="mb-5 flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
             Research Repository
           </h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -91,7 +91,7 @@ export default function ResearchList({
           </p>
         </div>
 
-        <label className="w-full flex items-center gap-4 sm:w-96">
+        <label className="flex w-full flex-col gap-1.5 md:w-96">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
             Search
           </span>
@@ -104,8 +104,8 @@ export default function ResearchList({
         </label>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
-        <table className="min-w-full text-sm">
+      <div className="hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
+        <table className="min-w-[900px] text-sm lg:min-w-full">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-[0.08em] text-slate-600">
             <tr>
               <th className="px-4 py-3 text-left">Title</th>
@@ -154,17 +154,116 @@ export default function ResearchList({
         </table>
       </div>
 
+      <div className="space-y-3 md:hidden">
+        {currentPageItems.length > 0 ? (
+          currentPageItems.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-lg border border-slate-200 bg-white p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-words text-sm font-bold text-slate-900">
+                    {item.title}
+                  </h3>
+                  <p className="mt-1 text-xs font-medium text-emerald-700">
+                    {item.authors}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                  {item.status}
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-2 text-xs text-slate-600">
+                <p>
+                  <span className="font-semibold text-slate-700">Adviser:</span>{" "}
+                  {item.adviser || "N/A"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-700">Critic:</span>{" "}
+                  {item.critic || "N/A"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAbstract(item.abstract)}
+                className="mt-3 block cursor-pointer text-left text-xs font-medium text-emerald-700 hover:underline"
+              >
+                View abstract
+              </button>
+
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                {item.pdf_url && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedManuscript({
+                        title: item.title,
+                        url: `${API_URL}${item.pdf_url}`,
+                      })
+                    }
+                    className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Manuscript
+                  </button>
+                )}
+                {item.website_url && (
+                  <a
+                    href={item.website_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Website
+                  </a>
+                )}
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    className="cursor-pointer rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setDeleteId(item.id)}
+                  className="cursor-pointer rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-slate-200 px-4 py-10 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500">
+              0
+            </div>
+            <p className="text-sm font-semibold text-slate-700">
+              No research records found
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Try a different search term or add a new research entry.
+            </p>
+          </div>
+        )}
+      </div>
+
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm">
+        <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span className="text-slate-600">
             Page {currentPage} of {totalPages}
           </span>
 
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
-              className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              className="flex-1 cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent sm:flex-none"
             >
               Previous
             </button>
@@ -191,7 +290,7 @@ export default function ResearchList({
             <button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+              className="flex-1 cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent sm:flex-none"
             >
               Next
             </button>
