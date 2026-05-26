@@ -69,7 +69,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <header className="border-b border-emerald-100 bg-white">
-        <div className="max-w-7xl mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
+        <div className="max-w-7xl mx-auto flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
