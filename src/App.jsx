@@ -100,6 +100,11 @@ export default function App() {
       <main className="p-4 pb-28 sm:p-6 sm:pb-24 lg:p-10 lg:pb-24">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
+            <img
+              src="./src/assets/dcs-logo.svg"
+              alt="DCS logo"
+              className="h-12 w-12 object-contain mb-2"
+            />
             <h1 className="text-2xl font-extrabold text-slate-950 tracking-tight sm:text-3xl">
               DCS Research Repository
             </h1>
