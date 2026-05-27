@@ -1,4 +1,3 @@
-// src/components/research/ResearchRow.jsx
 export function ResearchRow({
   item,
   onEdit,
@@ -18,8 +17,17 @@ export function ResearchRow({
   return (
     <tr className="hover:bg-emerald-50/40 transition">
       <td className="px-4 py-3">
-        <div className="font-bold text-slate-900">{item.title}</div>
-        <div className="text-xs text-emerald-700 font-medium">{item.authors}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-bold text-slate-900">{item.title}</span>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded uppercase tracking-wider border ${
+            item.type === "Thesis" 
+              ? "bg-purple-50 text-purple-700 border-purple-200" 
+              : "bg-blue-50 text-blue-700 border-blue-200"
+          }`}>
+            {item.type || "Capstone"}
+          </span>
+        </div>
+        <div className="text-xs text-emerald-700 font-medium mt-0.5">{item.authors}</div>
       </td>
 
       <td className="px-4 py-3">

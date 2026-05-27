@@ -1,7 +1,7 @@
 // src/config/constants.js
 export const API_URL =
   import.meta.env.VITE_API_URL || "https://dcs-rt-api-production.up.railway.app";
-
+  // "http://localhost:5000";
 export const STATUS_OPTIONS = [
   { value: "MOR", label: "MOR" },
   { value: "Part A", label: "Part A" },
@@ -11,6 +11,7 @@ export const STATUS_OPTIONS = [
 
 export const EMPTY_FORM = {
   title: "",
+  type: "Capstone",
   authors: "",
   abstract: "",
   adviser: "",

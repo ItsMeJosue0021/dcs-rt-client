@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { API_URL, STATUS_OPTIONS, EMPTY_FORM } from "../../config/constants";
+import { API_URL, STATUS_OPTIONS } from "../../config/constants";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { TextArea } from "../ui/TextArea";
 import { Select } from "../ui/Select";
+
+const TYPE_OPTIONS = [
+  { value: "Capstone", label: "Capstone Project" },
+  { value: "Thesis", label: "Thesis" }
+];
 
 function Field({ label, required = false, className = "", children }) {
   return (
@@ -30,15 +35,25 @@ export default function ResearchFormModal({
     if (isEdit && editData) {
       return {
         title: editData.title || "",
+        type: editData.type || "Capstone",
         authors: editData.authors || "",
         abstract: editData.abstract || "",
         adviser: editData.adviser || "",
         critic: editData.critic || "",
-        status: editData.status || "MOR",
+        status: editData.status || "Part A",
         website_url: editData.website_url || "",
       };
     }
-    return EMPTY_FORM;
+    return {
+      title: "",
+      type: "Capstone",
+      authors: "",
+      abstract: "",
+      adviser: "",
+      critic: "",
+      status: "Part A",
+      website_url: "",
+    };
   });
 
   const [pdfFile, setPdfFile] = useState(null);
@@ -51,7 +66,6 @@ export default function ResearchFormModal({
 
   const resetAndClose = () => {
     if (isSaving) return;
-    setFormData(EMPTY_FORM);
     setPdfFile(null);
     onClose();
   };
@@ -80,7 +94,6 @@ export default function ResearchFormModal({
         title: isEdit ? "Record updated" : "Record added",
         message: "The research repository has been updated.",
       });
-      setFormData(EMPTY_FORM);
       setPdfFile(null);
       onClose();
     } catch (err) {
@@ -105,15 +118,23 @@ export default function ResearchFormModal({
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Title" required>
-            <Input name="title" value={formData.title} onChange={handleChange} placeholder="Enter research title" disabled={isSaving} required />
+            <Input name="title" value={formData.title} onChange={handleChange} placeholder="Enter title" disabled={isSaving} required />
+          </Field>
+
+          <Field label="Classification Type" required>
+            <Select name="type" value={formData.type} onChange={handleChange} options={TYPE_OPTIONS} disabled={isSaving} required />
           </Field>
 
           <Field label="Authors" required>
             <Input name="authors" value={formData.authors} onChange={handleChange} placeholder="Enter author names" disabled={isSaving} required />
           </Field>
 
+          <Field label="Status" required>
+            <Select name="status" value={formData.status} onChange={handleChange} options={STATUS_OPTIONS} disabled={isSaving} required />
+          </Field>
+
           <Field label="Abstract" required className="md:col-span-2">
-            <TextArea name="abstract" value={formData.abstract} onChange={handleChange} placeholder="Enter research abstract" rows="3" disabled={isSaving} required />
+            <TextArea name="abstract" value={formData.abstract} onChange={handleChange} placeholder="Enter research abstract" rows="4" disabled={isSaving} required />
           </Field>
 
           <Field label="Adviser" required>
@@ -124,15 +145,11 @@ export default function ResearchFormModal({
             <Input name="critic" value={formData.critic} onChange={handleChange} placeholder="Enter critic name" disabled={isSaving} required />
           </Field>
 
-          <Field label="Status" required>
-            <Select name="status" value={formData.status} onChange={handleChange} options={STATUS_OPTIONS} disabled={isSaving} required />
-          </Field>
-
           <Field label="Manuscript PDF">
             <Input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files[0])} disabled={isSaving} />
           </Field>
 
-          <Field label="Website URL" className="md:col-span-2">
+          <Field label="Website URL">
             <Input name="website_url" value={formData.website_url} onChange={handleChange} placeholder="https://example.com" disabled={isSaving} />
           </Field>
         </div>
