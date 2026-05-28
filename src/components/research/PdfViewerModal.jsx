@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.js?url";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { Modal } from "../ui/Modal";
 
 export function PdfViewerModal({ file, onClose }) {
