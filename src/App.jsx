@@ -1,9 +1,17 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_URL } from "./config/constants";
+import { AccountModal } from "./components/auth/AccountModal";
+import { LoginPage } from "./components/auth/LoginPage";
 import ResearchFormModal from "./components/research/ResearchFormModal";
 import ResearchList from "./components/research/ResearchList";
 import { FeedbackPopup } from "./components/ui/FeedbackPopup";
+import {
+  clearStoredToken,
+  getAuthHeaders,
+  getStoredToken,
+  storeToken,
+} from "./utils/auth";
 
 export default function App() {
   const [researchLogs, setResearchLogs] = useState([]);
@@ -11,6 +19,9 @@ export default function App() {
   const [selectedResearch, setSelectedResearch] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [authToken, setAuthToken] = useState(() => getStoredToken());
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   const showLoadError = () => {
     setFeedback({
@@ -20,12 +31,28 @@ export default function App() {
     });
   };
 
-  const loadResearch = async () => {
-    const res = await fetch(`${API_URL}/api/research`);
+  const handleLogout = useCallback(() => {
+    clearStoredToken();
+    setAuthToken(null);
+    setCurrentUser(null);
+    setResearchLogs([]);
+    setIsAccountOpen(false);
+  }, []);
+
+  const loadResearch = useCallback(async (token = authToken) => {
+    const res = await fetch(`${API_URL}/api/research`, {
+      headers: getAuthHeaders(token),
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      handleLogout();
+      throw new Error("Authentication expired.");
+    }
+
     if (!res.ok) throw new Error("Unable to load research entries.");
 
     return res.json();
-  };
+  }, [authToken, handleLogout]);
 
   const fetchResearch = async () => {
     try {
@@ -38,9 +65,25 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!authToken) return undefined;
+
     let isActive = true;
 
-    loadResearch()
+    fetch(`${API_URL}/api/auth/me`, {
+      headers: getAuthHeaders(authToken),
+    })
+      .then((res) => {
+        if (res.status === 401 || res.status === 403) {
+          handleLogout();
+          throw new Error("Authentication expired.");
+        }
+        if (!res.ok) throw new Error("Unable to verify session.");
+        return res.json();
+      })
+      .then((data) => {
+        if (isActive) setCurrentUser(data.user);
+        return loadResearch(authToken);
+      })
       .then((data) => {
         if (isActive) setResearchLogs(data);
       })
@@ -52,7 +95,13 @@ export default function App() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [authToken, handleLogout, loadResearch]);
+
+  const handleLogin = ({ token, user }) => {
+    storeToken(token);
+    setAuthToken(token);
+    setCurrentUser(user);
+  };
 
   const handleEdit = (item) => {
     setSelectedResearch(item);
@@ -65,6 +114,10 @@ export default function App() {
     setIsEdit(false);
     setSelectedResearch(null);
   };
+
+  if (!authToken) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
@@ -86,13 +139,33 @@ export default function App() {
             </div>
           </div>
 
-          <div className="text-left sm:text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 sm:text-xs sm:tracking-[0.16em]">
-              Department of Computer Studies
-            </p>
-            <p className="text-xs font-medium text-slate-600 sm:text-sm">
-              Research Repository System
-            </p>
+          <div className="flex w-full items-center justify-between gap-3 bg-white sm:w-auto sm:justify-end">
+            <div className="min-w-0 text-left sm:text-right ">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 sm:text-xs sm:tracking-[0.16em]">
+                Department of Computer Studies
+              </p>
+              <p className="text-xs font-medium text-slate-600 sm:text-sm">
+                Research Repository System
+              </p>
+            </div>
+            
+            <div className="relative rounded-lg border border-emerald-100 bg-white p-2">
+              <button
+                type="button"
+                onClick={() => setIsAccountOpen(true)}
+                className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-sm font-bold text-emerald-800 transition hover:border-emerald-700 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-700/20"
+                aria-label="Open account menu"
+              >
+                {(currentUser?.name || currentUser?.email || "A").trim().charAt(0).toUpperCase()}
+              </button>
+              <AccountModal
+                isOpen={isAccountOpen}
+                user={currentUser}
+                onClose={() => setIsAccountOpen(false)}
+                onLogout={handleLogout}
+              />
+            </div>
+            
           </div>
         </div>
       </header>
@@ -130,6 +203,7 @@ export default function App() {
             onResearchAdded={fetchResearch}
             onEdit={handleEdit}
             onNotify={setFeedback}
+            authToken={authToken}
           />
         </div>
       </main>
@@ -142,6 +216,7 @@ export default function App() {
         editData={selectedResearch}
         isEdit={isEdit}
         onNotify={setFeedback}
+        authToken={authToken}
       />
 
       <FeedbackPopup feedback={feedback} onClose={() => setFeedback(null)} />

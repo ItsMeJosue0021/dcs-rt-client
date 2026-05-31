@@ -4,6 +4,7 @@ import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { TextArea } from "../ui/TextArea";
 import { Select } from "../ui/Select";
+import { getAuthHeaders } from "../../utils/auth";
 
 const TYPE_OPTIONS = [
   { value: "Capstone", label: "Capstone Project" },
@@ -29,6 +30,7 @@ export default function ResearchFormModal({
   editData,
   isEdit,
   onNotify,
+  authToken,
 }) {
   
   const [formData, setFormData] = useState(() => {
@@ -84,7 +86,11 @@ export default function ResearchFormModal({
     const method = isEdit ? "PUT" : "POST";
 
     try {
-      const res = await fetch(url, { method, body: data });
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(authToken),
+        body: data,
+      });
       if (!res.ok) throw new Error("Unable to save the research record.");
 
       await res.json();

@@ -4,6 +4,7 @@ import { ResearchRow } from "./ResarchRow"; // Fixed typo 'ResarchRow'
 import { AbstractModal } from "./AbstractModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { PdfViewerModal } from "./PdfViewerModal";
+import { getAuthHeaders } from "../../utils/auth";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -12,6 +13,7 @@ export default function ResearchList({
   onResearchAdded,
   onEdit,
   onNotify,
+  authToken,
 }) {
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,6 +63,7 @@ export default function ResearchList({
     try {
       const res = await fetch(`${API_URL}/api/research/${deleteId}`, {
         method: "DELETE",
+        headers: getAuthHeaders(authToken),
       });
       if (!res.ok) throw new Error("Unable to delete the research record.");
 
@@ -171,6 +174,7 @@ export default function ResearchList({
                     setSelectedManuscript({
                       title: selectedItem.title,
                       url: `${API_URL}${selectedItem.pdf_url}`,
+                      token: authToken,
                     })
                   }
                 />
@@ -254,6 +258,7 @@ export default function ResearchList({
                       setSelectedManuscript({
                         title: item.title,
                         url: `${API_URL}${item.pdf_url}`,
+                        token: authToken,
                       })
                     }
                     className="cursor-pointer rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"

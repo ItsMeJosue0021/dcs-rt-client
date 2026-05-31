@@ -30,7 +30,10 @@ export function PdfViewerModal({ file, onClose }) {
         if (!isActive) return null;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
-        loadingTask = pdfjsLib.getDocument(file.url);
+        loadingTask = pdfjsLib.getDocument({
+          url: file.url,
+          httpHeaders: file.token ? { Authorization: `Bearer ${file.token}` } : undefined,
+        });
 
         return loadingTask.promise;
       })
@@ -54,7 +57,7 @@ export function PdfViewerModal({ file, onClose }) {
       isActive = false;
       loadingTask?.destroy();
     };
-  }, [file?.url]);
+  }, [file?.url, file?.token]);
 
   useEffect(() => {
     if (!pdfDoc || !pagesRef.current) return undefined;
