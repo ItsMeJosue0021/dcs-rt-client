@@ -4,6 +4,7 @@ import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { TextArea } from "../ui/TextArea";
 import { Select } from "../ui/Select";
+import { apiFetch } from "../../lib/api";
 
 const TYPE_OPTIONS = [
   { value: "Capstone", label: "Capstone Project" },
@@ -37,11 +38,13 @@ export default function ResearchFormModal({
         title: editData.title || "",
         type: editData.type || "Capstone",
         authors: editData.authors || "",
-        abstract: editData.abstract || "",
+        abstract: editData.status === "Finished" ? (editData.abstract || "") : "",
+        description: editData.status === "Finished" ? "" : (editData.description || ""),
         adviser: editData.adviser || "",
         critic: editData.critic || "",
         status: editData.status || "Part A",
         website_url: editData.website_url || "",
+        academic_year: editData.academic_year || "",
       };
     }
     return {
@@ -49,10 +52,12 @@ export default function ResearchFormModal({
       type: "Capstone",
       authors: "",
       abstract: "",
+      description: "",
       adviser: "",
       critic: "",
       status: "Part A",
       website_url: "",
+      academic_year: "",
     };
   });
 
@@ -61,7 +66,9 @@ export default function ResearchFormModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => name === "status"
+      ? { ...prev, status: value, abstract: "", description: "" }
+      : { ...prev, [name]: value });
   };
 
   const resetAndClose = () => {
@@ -84,15 +91,20 @@ export default function ResearchFormModal({
     const method = isEdit ? "PUT" : "POST";
 
     try {
-      const res = await fetch(url, { method, body: data });
-      if (!res.ok) throw new Error("Unable to save the research record.");
-
-      await res.json();
-      onResearchAdded();
+      const res = await apiFetch(url, { method, body: data });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || "Unable to save the research record.");
+      }
+      const refreshed = await onResearchAdded();
       onNotify?.({
-        type: "success",
-        title: isEdit ? "Record updated" : "Record added",
-        message: "The research repository has been updated.",
+        type: refreshed === false ? "error" : "success",
+        title: refreshed === false
+          ? (isEdit ? "Record updated; list could not refresh" : "Record added; list could not refresh")
+          : (isEdit ? "Record updated" : "Record added"),
+        message: refreshed === false
+          ? "The change was saved, but the repository could not reload. Refresh the page to see it."
+          : "The research repository has been updated.",
       });
       setPdfFile(null);
       onClose();
@@ -101,7 +113,7 @@ export default function ResearchFormModal({
       onNotify?.({
         type: "error",
         title: "Save failed",
-        message: "Please check the details and try again.",
+        message: err.message || "Please check the details and try again.",
       });
     } finally {
       setIsSaving(false);
@@ -133,8 +145,12 @@ export default function ResearchFormModal({
             <Select name="status" value={formData.status} onChange={handleChange} options={STATUS_OPTIONS} disabled={isSaving} required />
           </Field>
 
-          <Field label="Abstract" required className="md:col-span-2">
-            <TextArea name="abstract" value={formData.abstract} onChange={handleChange} placeholder="Enter research abstract" rows="4" disabled={isSaving} required />
+          <Field label={formData.status === "Finished" ? "Abstract" : "Description"} required className="md:col-span-2">
+            {formData.status === "Finished" ? (
+              <TextArea name="abstract" value={formData.abstract} onChange={handleChange} placeholder="Enter research abstract" rows="4" disabled={isSaving} required />
+            ) : (
+              <TextArea name="description" value={formData.description} onChange={handleChange} placeholder="Describe the research project and its current work" rows="4" disabled={isSaving} required />
+            )}
           </Field>
 
           <Field label="Adviser" required>
@@ -145,12 +161,17 @@ export default function ResearchFormModal({
             <Input name="critic" value={formData.critic} onChange={handleChange} placeholder="Enter critic name" disabled={isSaving} required />
           </Field>
 
+          <Field label="Academic Year" required>
+            <Input name="academic_year" value={formData.academic_year} onChange={handleChange} placeholder="2024-2025" pattern="[0-9]{4}-[0-9]{4}" title="Use the format YYYY-YYYY, for example 2024-2025." disabled={isSaving} required />
+          </Field>
+
           <Field label="Manuscript PDF">
             <Input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files[0])} disabled={isSaving} />
           </Field>
 
           <Field label="Website URL">
-            <Input name="website_url" value={formData.website_url} onChange={handleChange} placeholder="https://example.com" disabled={isSaving} />
+            <Input type="url" name="website_url" value={formData.website_url} onChange={handleChange} placeholder="https://example.com" maxLength={500} disabled={isSaving} />
+            <span className="block text-xs font-normal text-slate-500">Enter a full URL beginning with https:// or http://, or leave this blank.</span>
           </Field>
         </div>
 

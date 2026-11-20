@@ -1,6 +1,11 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_URL } from "./config/constants";
+import { apiFetch, setCsrfToken } from "./lib/api";
+import { LoginPage } from "./components/auth/LoginPage";
+import { AccountMenu } from "./components/auth/AccountMenu";
+import { ChangePasswordModal } from "./components/auth/ChangePasswordModal";
+import { AdminPanel } from "./components/admin/AdminPanel";
 import ResearchFormModal from "./components/research/ResearchFormModal";
 import ResearchList from "./components/research/ResearchList";
 import { FeedbackPopup } from "./components/ui/FeedbackPopup";
@@ -11,33 +16,76 @@ export default function App() {
   const [selectedResearch, setSelectedResearch] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
-  const showLoadError = () => {
+  const showLoadError = useCallback(() => {
     setFeedback({
       type: "error",
       title: "Unable to load records",
       message: "Please check the API connection and refresh the page.",
     });
-  };
+  }, []);
 
-  const loadResearch = async () => {
-    const res = await fetch(`${API_URL}/api/research`);
+  const loadResearch = useCallback(async () => {
+    const res = await apiFetch(`${API_URL}/api/research`);
     if (!res.ok) throw new Error("Unable to load research entries.");
 
     return res.json();
-  };
+  }, []);
 
-  const fetchResearch = async () => {
+  const fetchResearch = useCallback(async () => {
     try {
       const data = await loadResearch();
       setResearchLogs(data);
+      return true;
     } catch (err) {
       console.error("Database sync runtime failure:", err);
       showLoadError();
+      return false;
     }
-  };
+  }, [loadResearch, showLoadError]);
+
+  const handleAuthenticated = useCallback((user, csrfToken) => {
+    setCsrfToken(csrfToken);
+    setCurrentUser(user);
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await apiFetch(`${API_URL}/api/auth/logout`, { method: "POST" });
+    } catch (error) {
+      console.error("Sign out request failed:", error);
+    } finally {
+      setCsrfToken(null);
+      setCurrentUser(null);
+      setIsAdminPanelOpen(false);
+      setIsPasswordModalOpen(false);
+      setResearchLogs([]);
+    }
+  }, []);
 
   useEffect(() => {
+    let isActive = true;
+    apiFetch(`${API_URL}/api/auth/me`)
+      .then(async (res) => {
+        const result = await res.json().catch(() => ({}));
+        return res.ok ? result : null;
+      })
+      .then((result) => {
+        if (!isActive || !result?.user) return;
+        setCsrfToken(result.csrfToken);
+        setCurrentUser(result.user);
+      })
+      .catch((error) => console.error("Session check failed:", error))
+      .finally(() => { if (isActive) setAuthReady(true); });
+    return () => { isActive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return undefined;
     let isActive = true;
 
     loadResearch()
@@ -52,7 +100,7 @@ export default function App() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [authReady, currentUser, loadResearch, showLoadError]);
 
   const handleEdit = (item) => {
     setSelectedResearch(item);
@@ -65,6 +113,21 @@ export default function App() {
     setIsEdit(false);
     setSelectedResearch(null);
   };
+
+  if (!authReady) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">Checking your session...</div>;
+  }
+  if (!currentUser) return <LoginPage onAuthenticated={handleAuthenticated} />;
+  if (isAdminPanelOpen && currentUser.role === "admin") {
+    return (
+      <>
+        <AdminPanel currentUser={currentUser} onBack={() => setIsAdminPanelOpen(false)} onChangePassword={() => setIsPasswordModalOpen(true)} onLogout={handleSignOut} onNotify={setFeedback} feedback={feedback} onCloseFeedback={() => setFeedback(null)} />
+        <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} onNotify={setFeedback} />
+      </>
+    );
+  }
+
+  const canEdit = ["admin", "editor"].includes(currentUser.role);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
@@ -95,6 +158,9 @@ export default function App() {
             </p>
           </div>
         </div>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-end gap-3 px-4 pb-3 text-sm sm:px-6 lg:px-0">
+          <AccountMenu currentUser={currentUser} onOpenAdmin={() => setIsAdminPanelOpen(true)} onChangePassword={() => setIsPasswordModalOpen(true)} onSignOut={handleSignOut} />
+        </div>
       </header>
 
       <main className="p-4 pb-28 sm:p-6 sm:pb-24 lg:p-10 lg:pb-24">
@@ -109,7 +175,7 @@ export default function App() {
             </p>
           </div>
 
-          <button
+          {canEdit && <button
             onClick={() => {
               setIsEdit(false);
               setSelectedResearch(null);
@@ -121,14 +187,15 @@ export default function App() {
               +
             </span>
             Add Research Entry
-          </button>
+          </button>}
         </div>
 
         <div className="max-w-7xl mx-auto">
           <ResearchList
             researchLogs={researchLogs}
             onResearchAdded={fetchResearch}
-            onEdit={handleEdit}
+            onEdit={canEdit ? handleEdit : undefined}
+            canDelete={currentUser.role === "admin"}
             onNotify={setFeedback}
           />
         </div>
@@ -145,6 +212,7 @@ export default function App() {
       />
 
       <FeedbackPopup feedback={feedback} onClose={() => setFeedback(null)} />
+      <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} onNotify={setFeedback} />
 
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-emerald-100 bg-white/95 backdrop-blur">
         <div className="max-w-7xl mx-auto flex flex-col gap-1 px-4 py-3 text-center sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left lg:px-10">

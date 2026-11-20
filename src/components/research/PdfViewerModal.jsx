@@ -30,7 +30,7 @@ export function PdfViewerModal({ file, onClose }) {
         if (!isActive) return null;
 
         pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
-        loadingTask = pdfjsLib.getDocument(file.url);
+        loadingTask = pdfjsLib.getDocument({ url: file.url, withCredentials: true });
 
         return loadingTask.promise;
       })

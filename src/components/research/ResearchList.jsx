@@ -1,22 +1,58 @@
 import { useState } from "react";
 import { API_URL } from "../../config/constants";
 import { ResearchRow } from "./ResarchRow"; // Fixed typo 'ResarchRow'
-import { AbstractModal } from "./AbstractModal";
+import { SummaryModal } from "./SummaryModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { PdfViewerModal } from "./PdfViewerModal";
+import { HighlightedText } from "./HighlightedText";
+import { apiFetch } from "../../lib/api";
 
 const ITEMS_PER_PAGE = 5;
+const SEARCH_WEIGHTS = {
+  title: 6,
+  authors: 5,
+  abstract: 4,
+  description: 4,
+  adviser: 3,
+  critic: 3,
+  academic_year: 2,
+  status: 1,
+  website_url: 1,
+};
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function relevanceScore(item, tokens) {
+  return Object.entries(SEARCH_WEIGHTS).reduce((score, [field, weight]) => {
+    if (field === "abstract" && item.status !== "Finished") return score;
+    if (field === "description" && item.status === "Finished") return score;
+    const value = normalizeSearchText(item[field]);
+    return score + tokens.reduce((fieldScore, token) =>
+      fieldScore + (value.includes(token) ? weight : 0), 0);
+  }, 0);
+}
 
 export default function ResearchList({
   researchLogs,
   onResearchAdded,
   onEdit,
+  canDelete = false,
   onNotify,
 }) {
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [academicYearFilter, setAcademicYearFilter] = useState("All");
+  const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedAbstract, setSelectedAbstract] = useState(null);
+  const [selectedSummary, setSelectedSummary] = useState(null);
   const [selectedManuscript, setSelectedManuscript] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -31,17 +67,32 @@ export default function ResearchList({
     setCurrentPage(1); 
   };
 
+  const searchTokens = normalizeSearchText(searchQuery).split(" ").filter(Boolean);
+  const academicYears = [...new Set(researchLogs.map((item) => item.academic_year).filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a));
+
   const filteredLogs = researchLogs.filter((item) => {
     if (activeTab !== "All" && (item.type || "Capstone") !== activeTab) {
       return false;
     }
+    if (statusFilter !== "All" && item.status !== statusFilter) return false;
+    if (academicYearFilter !== "All" && item.academic_year !== academicYearFilter) return false;
 
-    const q = searchQuery.toLowerCase();
-    return (
-      (item.title || "").toLowerCase().includes(q) ||
-      (item.authors || "").toLowerCase().includes(q) ||
-      (item.adviser || "").toLowerCase().includes(q)
-    );
+    const searchableText = normalizeSearchText(Object.keys(SEARCH_WEIGHTS)
+      .filter((field) => field !== "abstract" || item.status === "Finished")
+      .filter((field) => field !== "description" || item.status !== "Finished")
+      .map((field) => item[field])
+      .join(" "));
+    return searchTokens.every((token) => searchableText.includes(token));
+  }).sort((a, b) => {
+    if (sortBy === "title") return String(a.title || "").localeCompare(String(b.title || ""));
+    if (sortBy === "relevance" && searchTokens.length) {
+      const scoreDifference = relevanceScore(b, searchTokens) - relevanceScore(a, searchTokens);
+      if (scoreDifference) return scoreDifference;
+    }
+    const dateDifference = (Date.parse(b.created_at) || Number(b.id) || 0)
+      - (Date.parse(a.created_at) || Number(a.id) || 0);
+    return dateDifference;
   });
 
   const totalItems = filteredLogs.length;
@@ -59,18 +110,20 @@ export default function ResearchList({
     setIsDeleting(true);
 
     try {
-      const res = await fetch(`${API_URL}/api/research/${deleteId}`, {
+      const res = await apiFetch(`${API_URL}/api/research/${deleteId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Unable to delete the research record.");
 
       await res.json();
-      if (onResearchAdded) onResearchAdded();
+      const refreshed = onResearchAdded ? await onResearchAdded() : true;
       setDeleteId(null);
       onNotify?.({
-        type: "success",
-        title: "Record deleted",
-        message: "The research entry was removed successfully.",
+        type: refreshed === false ? "error" : "success",
+        title: refreshed === false ? "Record deleted; list could not refresh" : "Record deleted",
+        message: refreshed === false
+          ? "The record was removed, but the repository could not reload. Refresh the page to see the latest list."
+          : "The research entry was removed successfully.",
       });
 
       if (currentPageItems.length === 1 && currentPage > 1) {
@@ -102,17 +155,39 @@ export default function ResearchList({
           </p>
         </div>
 
-        <label className="flex w-full flex-col gap-1.5 md:w-96">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Search
-          </span>
-          <input
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
-            placeholder="Title, author, or adviser"
-            value={searchQuery}
-            onChange={handleSearchChange}
-          />
-        </label>
+        <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-[42rem] lg:grid-cols-4">
+          <label className="flex flex-col gap-1.5 sm:col-span-2">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Search all fields</span>
+            <input
+              type="search"
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15"
+              placeholder="Search title, summary, authors, adviser..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Status</span>
+            <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setCurrentPage(1); }} className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15">
+              {["All", "MOR", "Part A", "Part B", "Finished"].map((status) => <option key={status} value={status}>{status === "All" ? "All statuses" : status}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Academic year</span>
+            <select value={academicYearFilter} onChange={(event) => { setAcademicYearFilter(event.target.value); setCurrentPage(1); }} className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15">
+              <option value="All">All years</option>
+              {academicYears.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Sort by</span>
+            <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setCurrentPage(1); }} className="rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/15">
+              <option value="newest">Newest</option>
+              <option value="relevance">Relevance</option>
+              <option value="title">Title A-Z</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="mb-6 border-b border-slate-200">
@@ -151,7 +226,7 @@ export default function ResearchList({
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase tracking-[0.08em] text-slate-600">
             <tr>
               <th className="px-4 py-3 text-left">Title</th>
-              <th className="px-4 py-3 text-left">Abstract</th>
+              <th className="px-4 py-3 text-left">Summary</th>
               <th className="px-4 py-3 text-left">Adviser / Critic</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th className="px-4 py-3 text-left">Assets</th>
@@ -164,9 +239,11 @@ export default function ResearchList({
                 <ResearchRow
                   key={item.id}
                   item={item}
+                  searchQuery={searchQuery}
+                  canDelete={canDelete}
                   onEdit={onEdit}
                   onDelete={setDeleteId}
-                  onViewAbstract={setSelectedAbstract}
+                  onViewSummary={setSelectedSummary}
                   onViewManuscript={(selectedItem) =>
                     setSelectedManuscript({
                       title: selectedItem.title,
@@ -208,7 +285,7 @@ export default function ResearchList({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <h3 className="wrap-break-word text-sm font-bold text-slate-900">
-                      {item.title}
+                      <HighlightedText text={item.title} query={searchQuery} />
                     </h3>
                     <span className={`text-[9px] font-bold px-1 rounded uppercase border shrink-0 ${
                       item.type === "Thesis" 
@@ -221,6 +298,7 @@ export default function ResearchList({
                   <p className="mt-1 text-xs font-medium text-emerald-700">
                     {item.authors}
                   </p>
+                  <p className="mt-0.5 text-xs text-slate-500">Academic year: {item.academic_year || "Not set"}</p>
                 </div>
                 <span className="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
                   {item.status}
@@ -238,13 +316,15 @@ export default function ResearchList({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedAbstract(item.abstract)}
-                className="mt-3 block cursor-pointer text-left text-xs font-medium text-emerald-700 hover:underline"
-              >
-                View abstract
-              </button>
+              {(item.status === "Finished" ? item.abstract : item.description) && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSummary(item)}
+                  className="mt-3 block cursor-pointer text-left text-xs font-medium text-emerald-700 hover:underline"
+                >
+                  View summary
+                </button>
+              )}
 
               <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
                 {item.pdf_url && (
@@ -280,13 +360,13 @@ export default function ResearchList({
                     Edit
                   </button>
                 )}
-                <button
+                {canDelete && <button
                   type="button"
                   onClick={() => setDeleteId(item.id)}
                   className="cursor-pointer rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
                 >
                   Delete
-                </button>
+                </button>}
               </div>
             </div>
           ))
@@ -361,10 +441,11 @@ export default function ResearchList({
         isDeleting={isDeleting}
       />
 
-      <AbstractModal
-        isOpen={Boolean(selectedAbstract)}
-        abstract={selectedAbstract}
-        onClose={() => setSelectedAbstract(null)}
+      <SummaryModal
+        isOpen={selectedSummary !== null}
+        summary={selectedSummary?.status === "Finished" ? selectedSummary.abstract : selectedSummary?.description}
+        query={searchQuery}
+        onClose={() => setSelectedSummary(null)}
       />
 
       <PdfViewerModal
